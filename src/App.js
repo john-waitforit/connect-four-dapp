@@ -2,10 +2,20 @@ import React, { Component } from 'react';
 import ConnectFour from '../output/contracts/ConnectFour.json';
 import getWeb3 from './utils/getWeb3';
 
+import XDate from 'xdate';
+import JoinGame from './game/joinGame';
+import CreateGame from './game/createGame';
+
 import './css/oswald.css';
 import './css/open-sans.css';
 import './css/pure-min.css';
 import './App.css';
+
+export const State = {
+  0: "Ended",
+  1: "In Progress",
+  2: "Waiting For Player"
+};
 
 class App extends Component {
   constructor(props) {
@@ -37,18 +47,17 @@ class App extends Component {
   }
 
   saveGame(id, gameArray) {
-    console.log("Game id: " + id, gameArray);
-
     this.setState((prevState) => {
       let games = prevState.games.slice();
       games[id] = {
+        id: id,
         gameName: gameArray[0],
-        timeCreated: gameArray[1],
-        timeStarted: gameArray[2],
-        amountBet: gameArray[3],
+        timeCreated: new XDate(gameArray[1].toNumber() * 1000),
+        timeStarted: new XDate(gameArray[2].toNumber() * 1000),
+        amountBet: gameArray[3].toNumber(),
         creator: gameArray[4],
         opponent: gameArray[5],
-        state: gameArray[6],
+        state: State[gameArray[6].toNumber()],
         isCreatorsTurn: gameArray[7],
         isCreatorWinner: gameArray[8]
       };
@@ -71,21 +80,38 @@ class App extends Component {
       connectFour.deployed().then((instance) => {
         connectFourInstance = instance;
 
-        //connectFourInstance.createWaitingGame("Test game 01", 6, {from: accounts[0]});
-        //connectFourInstance.createWaitingGame("Test game 02", 3, {from: accounts[0]});
-        //connectFourInstance.createWaitingGame("Test game 03", 2, {from: accounts[0]});
-        //connectFourInstance.createWaitingGame("Test game 04", 4, {from: accounts[0]});
-
-        return connectFourInstance.getNumberOfGames();
-      }).then(async (n) => {
-
-        for(let i = 0; i < n; i++){
-          this.saveGame(i, await connectFourInstance.getGameData(i));
-        }
-
-        //return connectFourInstance.getNumberOfGames();
+        this.setState({account: accounts[0], connectFourInstance});
+        //this.batchCreateGames();
+        this.fetchGames();
+        this.fetchFunnyName();
       })
     })
+  }
+
+  async fetchGames() {
+    let {connectFourInstance} = this.state;
+    let n = await connectFourInstance.getNumberOfGames();
+    console.log("Number of games:", n.toNumber());
+    for(let i = 0; i < n; i++){
+      this.saveGame(i, await connectFourInstance.getGameData(i));
+    }
+  }
+
+  async fetchFunnyName() {
+    let {connectFourInstance} = this.state;
+    let funnyName = await connectFourInstance.generateRandomName();
+    this.setState({funnyName});
+  }
+
+  batchCreateGames() {
+    let {connectFourInstance, account} = this.state;
+
+    connectFourInstance.createWaitingGame("Test game 01", 6, {from: account});
+    connectFourInstance.createWaitingGame("Test game 02", 3, {from: account});
+    connectFourInstance.createWaitingGame("Test game 03", 2, {from: account});
+    connectFourInstance.createWaitingGame("Test game 04", 1, {from: account});
+    connectFourInstance.createWaitingGame("Test game 05", 5, {from: account});
+
   }
 
   render() {
@@ -95,23 +121,17 @@ class App extends Component {
           <a href="#" className="pure-menu-heading pure-menu-link">Connect Four</a>
         </nav>
 
-        <main className="container">
-          <div className="pure-g">
-            <div className="pure-u-1-1">
-              <h1>Connect the dots!</h1>
-              <p>My stupid github page is working.</p>
-              <br/>
-              {this.state.games.map((game, index) =>
-                <div key={index}>
-                  <div>{"Game id: " + index}</div>
-                  <div>{"Game name: " + game.gameName}</div>
-                  <div>{"Amount bet: " + game.amountBet}</div>
-                  <br/>
-                </div>
-              )}
-            </div>
-          </div>
-        </main>
+        <div className="container">
+
+          <h1>Connect Four!</h1>
+
+          <CreateGame defaultName={this.state.funnyName}/>
+
+          <br/>
+
+          <JoinGame games={this.state.games.filter(game => game.state === State[2])}/>
+
+        </div>
       </div>
     );
   }

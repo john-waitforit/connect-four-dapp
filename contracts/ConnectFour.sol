@@ -73,14 +73,14 @@ contract ConnectFour is Ownable {
         GameStarted(_gameId);
     }
 
+    function addFunnyName(string _name) external onlyOwner {
+        funnyNames.push(_name);
+    }
+
     function createWaitingGame(string _name, uint _bet) external returns (uint){
         uint id = games.push(Game(_name, now, now, _bet, msg.sender, msg.sender, State.WaitingForOpponent, true, true)) - 1;
         GameCreated(id);
         return id;
-    }
-
-    function addFunnyName(string _name) external onlyOwner {
-        funnyNames.push(_name);
     }
 
     function createGame(string _name, address _opponent, uint _bet) external returns (uint){
@@ -91,8 +91,8 @@ contract ConnectFour is Ownable {
     }
 
     function generateRandomName() external view returns (string) {
-        uint randIndex = uint(keccak256(msg.sender, now)) % funnyNames.length;
-        string memory gameNumber = strConcat("#", uintToString(funnyNames.length));
+        uint randIndex = now % funnyNames.length;
+        string memory gameNumber = strConcat("#", uintToString(games.length));
         string memory gameFunny = strConcat(" - ", funnyNames[randIndex]);
 
         return strConcat(gameNumber, gameFunny);

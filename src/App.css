@@ -9,6 +9,15 @@ h1, h2, h3 {
   font-family: 'Oswald', 'Arial Narrow', sans-serif;
 }
 
+h1 {
+  color: #c61d59;
+  text-align: center;
+}
+
+h2 {
+  color: #13a9c6;
+}
+
 code {
   display: block;
   margin: 20px 0 15px 0;
@@ -20,6 +29,10 @@ code {
   box-sizing: border-box;
   width: 100%;
   padding: 45px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
 .pure-button-primary {

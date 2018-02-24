@@ -52,11 +52,15 @@
   "dependencies": {
     "dotenv": "^2.0.0",
     "gh-pages": "^1.1.0",
+    "material-ui": "^1.0.0-beta.34",
+    "material-ui-icons": "^1.0.0-beta.17",
     "react": "^15.4.2",
-    "react-dom": "^15.4.2"
+    "react-dom": "^15.4.2",
+    "sweetalert": "^2.1.0",
+    "xdate": "^0.8.2"
   },
   "scripts": {
-    "start": "rm -rf output && mv build output && node scripts/start.js",
+    "start": "mv build output && node scripts/start.js",
     "build": "rm -rf output && mv build output && node scripts/build.js",
     "test": "node scripts/test.js --env=jsdom",
     "predeploy": "npm run build",

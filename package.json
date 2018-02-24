@@ -1,5 +1,5 @@
 {
-  "name": "ConnectFour",
+  "name": "connect-four-dapp",
   "version": "0.1.0",
   "private": true,
   "homepage": "https://johnjohnwagner.github.io/connect-four-dapp/",
@@ -60,7 +60,8 @@
     "build": "node scripts/build.js",
     "test": "node scripts/test.js --env=jsdom",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d build"
+    "deploy": "gh-pages -d build",
+    "eject": "react-scripts eject"
   },
   "jest": {
     "collectCoverageFrom": [

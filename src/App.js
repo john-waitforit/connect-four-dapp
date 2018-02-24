@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import ConnectFour from '../build/contracts/ConnectFour.json';
+import ConnectFour from '../output/contracts/ConnectFour.json';
 import getWeb3 from './utils/getWeb3';
 
 import './css/oswald.css';
@@ -56,7 +56,7 @@ class App extends Component {
             connectFourInstance = instance;
 
         // Stores a given value, 5 by default.
-        //return connectFourInstance.createWaitingGame("Test game 02", 3, {from: accounts[0]});
+        return connectFourInstance.createWaitingGame("Test game 02", 3, {from: accounts[0]});
       }).then((result) => {
         // Get the value from the contract to prove it worked.
         return connectFourInstance.getGameData(1);
@@ -71,7 +71,7 @@ class App extends Component {
     return (
       <div className="App">
         <nav className="navbar pure-menu pure-menu-horizontal">
-            <a href="#" className="pure-menu-heading pure-menu-link">Truffle Box</a>
+            <a href="#" className="pure-menu-heading pure-menu-link">Connect Four</a>
         </nav>
 
         <main className="container">

@@ -1,4 +1,7 @@
 module.exports = {
+  // To solve conflicts with react build directory and github pages  
+  //contracts_build_directory: "./output/contraccts",
+    
   // See <http://truffleframework.com/docs/advanced/configuration>
   // for more about customizing your Truffle configuration!
   networks: {

@@ -27,7 +27,6 @@ contract ConnectFour is Ownable {
     event Move(uint gameId);
     event GameFinished(uint gameId);
 
-
     function ConnectFour() public {
         funnyNames.push("This is not the game you are looking for");
         funnyNames.push("Connect two + two");

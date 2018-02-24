@@ -13,7 +13,8 @@ class App extends Component {
 
     this.state = {
       storageValue: 0,
-      web3: null
+      web3: null,
+      games: [],
     };
   }
 
@@ -22,47 +23,67 @@ class App extends Component {
     // See utils/getWeb3 for more info.
 
     getWeb3
-    .then(results => {
-      this.setState({
-        web3: results.web3
-      });
+      .then(results => {
+        this.setState({
+          web3: results.web3
+        });
 
-      // Instantiate contract once web3 provided.
-      this.instantiateContract()
+        // Instantiate contract once web3 provided.
+        this.instantiateContract()
+      })
+      .catch(() => {
+        console.log('Error finding web3.')
+      })
+  }
+
+  saveGame(id, gameArray) {
+    console.log("Game id: " + id, gameArray);
+
+    this.setState((prevState) => {
+      let games = prevState.games.slice();
+      games[id] = {
+        gameName: gameArray[0],
+        timeCreated: gameArray[1],
+        timeStarted: gameArray[2],
+        amountBet: gameArray[3],
+        creator: gameArray[4],
+        opponent: gameArray[5],
+        state: gameArray[6],
+        isCreatorsTurn: gameArray[7],
+        isCreatorWinner: gameArray[8]
+      };
+
+      return {games}
     })
-    .catch(() => {
-      console.log('Error finding web3.')
-    })
+
   }
 
   instantiateContract() {
-    /*
-     * SMART CONTRACT EXAMPLE
-     *
-     * Normally these functions would be called in the context of a
-     * state management library, but for convenience I've placed them here.
-     */
-
     const contract = require('truffle-contract');
     const connectFour = contract(ConnectFour);
-      connectFour.setProvider(this.state.web3.currentProvider);
+    connectFour.setProvider(this.state.web3.currentProvider);
 
-    // Declaring this for later so we can chain functions on SimpleStorage.
+    // Declaring this for later so we can chain functions on ConnectFour.
     let connectFourInstance;
 
     // Get accounts.
     this.state.web3.eth.getAccounts((error, accounts) => {
-        connectFour.deployed().then((instance) => {
-            connectFourInstance = instance;
+      connectFour.deployed().then((instance) => {
+        connectFourInstance = instance;
 
-        // Stores a given value, 5 by default.
-        return connectFourInstance.createWaitingGame("Test game 02", 3, {from: accounts[0]});
-      }).then((result) => {
-        // Get the value from the contract to prove it worked.
-        return connectFourInstance.getGameData(1);
-      }).then((result) => {
-        // Update state with the result.
-        return this.setState({ game: JSON.stringify(result)});
+        //connectFourInstance.createWaitingGame("Test game 01", 6, {from: accounts[0]});
+        //connectFourInstance.createWaitingGame("Test game 02", 3, {from: accounts[0]});
+        //connectFourInstance.createWaitingGame("Test game 03", 2, {from: accounts[0]});
+        //connectFourInstance.createWaitingGame("Test game 04", 4, {from: accounts[0]});
+
+        return connectFourInstance.getNumberOfGames();
+      }).then(async (n) => {
+
+        for(let i = 0; i < n; i++){
+          this.saveGame(i, await connectFourInstance.getGameData(i));
+        }
+
+        //return connectFourInstance.getNumberOfGames();
       })
     })
   }
@@ -71,17 +92,23 @@ class App extends Component {
     return (
       <div className="App">
         <nav className="navbar pure-menu pure-menu-horizontal">
-            <a href="#" className="pure-menu-heading pure-menu-link">Connect Four</a>
+          <a href="#" className="pure-menu-heading pure-menu-link">Connect Four</a>
         </nav>
 
         <main className="container">
           <div className="pure-g">
             <div className="pure-u-1-1">
-              <h1>Good to Go!</h1>
-              <p>Your stupid github page is not working.</p>
-              <h2>Smart Contract Example</h2>
-              <p>If your contracts compiled and migrated successfully, below will show a game json.</p>
-              <p>The stored value is: {this.state.game}</p>
+              <h1>Connect the dots!</h1>
+              <p>My stupid github page is working.</p>
+              <br/>
+              {this.state.games.map((game, index) =>
+                <div key={index}>
+                  <div>{"Game id: " + index}</div>
+                  <div>{"Game name: " + game.gameName}</div>
+                  <div>{"Amount bet: " + game.amountBet}</div>
+                  <br/>
+                </div>
+              )}
             </div>
           </div>
         </main>

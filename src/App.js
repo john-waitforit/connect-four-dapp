@@ -78,7 +78,7 @@ class App extends Component {
           <div className="pure-g">
             <div className="pure-u-1-1">
               <h1>Good to Go!</h1>
-              <p>Your Truffle Box is installed and ready.</p>
+              <p>Your stupid github page is not working.</p>
               <h2>Smart Contract Example</h2>
               <p>If your contracts compiled and migrated successfully, below will show a game json.</p>
               <p>The stored value is: {this.state.game}</p>

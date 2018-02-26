@@ -58,20 +58,18 @@ class CreateGame extends Component {
     this.setState({[field]: event.target.value});
   };
 
-  createGame() {
+  createGame = () => {
+    let {gameName, amountBet, opponent} = this.state;
 
-    swal("You just started a game with a friend!","", "success")
-  }
+    if(opponent) {
+      this.props.contract.createGame(gameName, opponent, amountBet, {from: this.props.account});
+    }
+    else {
+      this.props.contract.createWaitingGame(gameName, amountBet, {from: this.props.account});
+    }
 
-  createWaitingGame() {
-    swal("You just created an empty game!", "An opponent will probably join you soon ;)", "success")
-
-  }
-
-  joinGame() {
-    swal("Title", "You just joined a game!", "success")
-
-  }
+    this.props.openLoading();
+  };
 
   render() {
 
@@ -81,7 +79,7 @@ class CreateGame extends Component {
     const addressError = opponent.length !== 0 && opponent.length !== 42;
 
     return (
-      <Paper style={{padding: 10, maxWidth: 1200}}>
+      <Paper style={{padding: 10, maxWidth: 1600, width: '70%', minWidth: 1000}}>
         <div style={{paddingLeft: 10}}>
           <h2>Create a game!</h2>
         </div>
@@ -124,7 +122,7 @@ class CreateGame extends Component {
             className={classes.button}
             variant="raised"
             disabled={addressError}
-            onClick={() => opponent.length === 0 ? this.createWaitingGame() : this.createGame()}
+            onClick={this.createGame}
           >
             {opponent.length === 0 ? "Find opponent" : "Play with friend"}
             <VideoGame className={classes.rightIcon}>u</VideoGame>

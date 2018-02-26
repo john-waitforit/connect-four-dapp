@@ -22,7 +22,8 @@ contract ConnectFour is Ownable {
     Game[] games;
     string[] public funnyNames;
 
-    event GameCreated(uint gameId);
+    event GameCreated(uint gameId, string gameName, uint timeCreated, uint timeStarted, uint amountBet, address creator,
+        address opponent, State state, bool isCreatorsTurn, bool isCreatorWinner);
     event GameStarted(uint gameId);
     event Move(uint gameId);
     event GameFinished(uint gameId);
@@ -79,13 +80,14 @@ contract ConnectFour is Ownable {
 
     function createWaitingGame(string _name, uint _bet) external returns (uint){
         uint id = games.push(Game(_name, now, now, _bet, msg.sender, msg.sender, State.WaitingForOpponent, true, true)) - 1;
-        GameCreated(id);
+        GameCreated(id, _name, now, now, _bet, msg.sender, msg.sender, State.WaitingForOpponent, true, true);
         return id;
     }
 
     function createGame(string _name, address _opponent, uint _bet) external returns (uint){
+        require(msg.sender != _opponent);
         uint id = games.push(Game(_name, now, now, _bet, msg.sender, _opponent, State.InProgress, true, true)) - 1;
-        GameCreated(id);
+        GameCreated(id, _name, now, now, _bet, msg.sender, _opponent, State.InProgress, true, true);
         GameStarted(id);
         return id;
     }
@@ -96,6 +98,10 @@ contract ConnectFour is Ownable {
         string memory gameFunny = strConcat(" - ", funnyNames[randIndex]);
 
         return strConcat(gameNumber, gameFunny);
+    }
+
+    function isOwner() external view returns (bool) {
+        return msg.sender == owner;
     }
 
     function strConcat(string _a, string _b) internal pure returns (string) {

@@ -60,6 +60,10 @@ code {
   color: #fff;
 }
 
+.navbar div {
+  color: #fff;
+}
+
 .navbar a:active,
 .navbar a:focus,
 .navbar a:hover {

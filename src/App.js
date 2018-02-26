@@ -10,6 +10,7 @@ import Modal from 'react-responsive-modal';
 
 import ListGames from './game/listGames';
 import CreateGame from './game/createGame';
+import PlayGame from './game/playGame';
 
 import './css/oswald.css';
 import './css/open-sans.css';
@@ -36,6 +37,7 @@ class App extends Component {
       connectFourInstance: null,
       isOwner: false,
       loading: false,
+      inGame: true,
     };
   }
 
@@ -230,7 +232,7 @@ class App extends Component {
   };
 
   render() {
-    const {loading, account, isOwner, funnyName, games, connectFourInstance} = this.state;
+    const {inGame, loading, account, isOwner, funnyName, games, connectFourInstance} = this.state;
 
     return (
       <div className="App">
@@ -245,20 +247,28 @@ class App extends Component {
 
           <h1>Connect Four! (aka Four in a row)</h1>
 
-          <CreateGame defaultName={funnyName} account={account} contract={connectFourInstance} openLoading={this.openLoading}/>
+          {inGame ?
+            <div>
+              <PlayGame/>
+            </div>
+            :
+            <div>
+              <CreateGame defaultName={funnyName} account={account} contract={connectFourInstance} openLoading={this.openLoading}/>
 
-          <br/>
+              <br/>
 
-          <ListGames account={account} contract={connectFourInstance} openLoading={this.openLoading} games={games} state={2}/>
-          <br/>
-          <ListGames account={account} contract={connectFourInstance} openLoading={this.openLoading} games={games} state={1}/>
-          <br/>
-          <ListGames account={account} contract={connectFourInstance} openLoading={this.openLoading} games={games} state={0}/>
+              <ListGames account={account} contract={connectFourInstance} openLoading={this.openLoading} games={games} state={2}/>
+              <br/>
+              <ListGames account={account} contract={connectFourInstance} openLoading={this.openLoading} games={games} state={1}/>
+              <br/>
+              <ListGames account={account} contract={connectFourInstance} openLoading={this.openLoading} games={games} state={0}/>
 
-          <Button variant="raised" onClick={this.batchCreateGames} style={{background: "#c61d59", color: "#fff", margin: 30}}>
-            {"Test Button"}
-            <VideoGame/>
-          </Button>
+              <Button variant="raised" onClick={this.batchCreateGames} style={{background: "#c61d59", color: "#fff", margin: 30}}>
+                {"Test Button"}
+                <VideoGame/>
+              </Button>
+            </div>
+          }
 
           <Modal open={loading} onClose={this.stopLoading} little>
             <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'}}>

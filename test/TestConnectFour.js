@@ -25,7 +25,7 @@ contract('ConnectFour', function ([owner, opponent]) {
     let game = saveGame(await connectFour.getGameData(0));
 
     assert.equal(game.board[5][column], 1);
-  })
+  });
 
   it('drop two chips', async () => {
     await connectFour.createGame('Test game 1', opponent, 1);
@@ -36,7 +36,24 @@ contract('ConnectFour', function ([owner, opponent]) {
 
     assert.equal(game.board[5][column], 1);
     assert.equal(game.board[4][column], 2);
-  })
+  });
+
+  it('Four vertical', async () => {
+    await connectFour.createGame('Test game 1', opponent, 1);
+    let column = 0;
+    await connectFour.dropChip(0, column, {from: owner});
+    await connectFour.dropChip(0, 1, {from: opponent});
+    await connectFour.dropChip(0, column, {from: owner});
+    await connectFour.dropChip(0, 1, {from: opponent});
+    await connectFour.dropChip(0, column, {from: owner});
+    await connectFour.dropChip(0, 1, {from: opponent});
+    await connectFour.dropChip(0, column, {from: owner});
+    let game = saveGame(await connectFour.getGameData(0));
+
+    assert.equal(game.state, 0);
+  });
+
+
 
 });
 

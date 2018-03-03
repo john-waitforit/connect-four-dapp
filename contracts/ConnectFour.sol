@@ -6,6 +6,8 @@ import "./ownable.sol";
 contract ConnectFour is Ownable {
 
     enum State { Ended, InProgress, WaitingForOpponent }
+    uint constant HEIGHT = 6;
+    uint constant WIDTH = 7;
 
     struct Game {
         string gameName;
@@ -17,7 +19,7 @@ contract ConnectFour is Ownable {
         State state;
         bool isCreatorsTurn;
         bool isCreatorWinner;
-        uint[7][6] board;
+        uint[WIDTH][HEIGHT] board;
     }
 
     Game[] games;
@@ -62,7 +64,7 @@ contract ConnectFour is Ownable {
         State state,
         bool isCreatorsTurn,
         bool isCreatorWinner,
-        uint[7][6] board)
+        uint[WIDTH][HEIGHT] board)
     {
         Game storage myGame = games[_gameId];
         gameName = myGame.gameName;
@@ -94,7 +96,7 @@ contract ConnectFour is Ownable {
     }
 
     function createWaitingGame(string _name, uint _bet) external returns (uint){
-        uint[7][6] memory board;
+        uint[WIDTH][HEIGHT] memory board;
 
         uint id = games.push(Game(_name, now, now, _bet, msg.sender, msg.sender, State.WaitingForOpponent, true, true, board)) - 1;
         GameCreated(id, _name, now, now, _bet, msg.sender, msg.sender, State.WaitingForOpponent, true, true);
@@ -103,7 +105,7 @@ contract ConnectFour is Ownable {
 
     function createGame(string _name, address _opponent, uint _bet) external returns (uint){
         require(msg.sender != _opponent);
-        uint[7][6] memory board;
+        uint[WIDTH][HEIGHT] memory board;
 
         uint id = games.push(Game(_name, now, now, _bet, msg.sender, _opponent, State.InProgress, true, true, board)) - 1;
         GameCreated(id, _name, now, now, _bet, msg.sender, _opponent, State.InProgress, true, true);
@@ -113,11 +115,11 @@ contract ConnectFour is Ownable {
 
     function dropChip(uint gameId, uint column) external isHisTurn(gameId) isInProgress(gameId) {
         Game storage myGame = games[gameId];
-        require(column < 7 && column >= 0);
+        require(column < WIDTH && column >= 0);
         require(myGame.board[0][column] == 0);
 
-        uint row = 6;
-        for(uint i = 5; i >= 0; i--) {
+        uint row = HEIGHT;
+        for(uint i = HEIGHT - 1; i >= 0; i--) {
             if(myGame.board[i][column] == 0) {
                 row = i;
                 myGame.board[row][column] = myGame.isCreatorsTurn ? 1 : 2;
@@ -126,7 +128,7 @@ contract ConnectFour is Ownable {
         }
 
         // This should always work since we checked if myGame.board[5][column] == 0
-        if(row != 6) {
+        if(row != HEIGHT) {
             Move(gameId, row, column, myGame.isCreatorsTurn);
 
             if(isGameFinished(gameId, column, row)){
@@ -146,6 +148,120 @@ contract ConnectFour is Ownable {
     function isGameFinished(uint gameId, uint column, uint row) internal returns(bool) {
         Game storage myGame = games[gameId];
         uint player = myGame.isCreatorsTurn ? 1 : 2;
+        require(myGame.board[row][column] == player);
+
+        // Vertical
+        if(row + 3 < HEIGHT
+        && myGame.board[row+1][column] == player
+        && myGame.board[row+2][column] == player
+        && myGame.board[row+3][column] == player)
+            return true;
+
+        // Vertical
+        if(row + 2 < HEIGHT && row - 1 >= 0
+        && myGame.board[row+1][column] == player
+        && myGame.board[row+2][column] == player
+        && myGame.board[row-1][column] == player)
+            return true;
+
+        // Vertical
+        if(row + 1 < HEIGHT && row - 2 >= 0
+        && myGame.board[row+1][column] == player
+        && myGame.board[row-1][column] == player
+        && myGame.board[row-2][column] == player)
+            return true;
+
+        // Vertical
+        if(row < HEIGHT && row - 3 >= 0
+        && myGame.board[row-1][column] == player
+        && myGame.board[row-2][column] == player
+        && myGame.board[row-3][column] == player)
+            return true;
+
+        // Horizontal
+        if(column + 3 < WIDTH
+        && myGame.board[row][column+1] == player
+        && myGame.board[row][column+2] == player
+        && myGame.board[row][column+3] == player)
+            return true;
+
+        // Horizontal
+        if(column + 2 < WIDTH && column - 1 >= 0
+        && myGame.board[row][column-1] == player
+        && myGame.board[row][column+1] == player
+        && myGame.board[row][column+2] == player)
+            return true;
+
+        // Horizontal
+        if(column + 1 < WIDTH && column - 2 >= 0
+        && myGame.board[row][column-2] == player
+        && myGame.board[row][column-1] == player
+        && myGame.board[row][column+1] == player)
+            return true;
+
+        // Horizontal
+        if(column < WIDTH && column - 3 >= 0
+        && myGame.board[row][column-3] == player
+        && myGame.board[row][column-2] == player
+        && myGame.board[row][column-1] == player)
+            return true;
+
+        // Diagonal down / right
+        if(column + 3 < WIDTH && row + 3 < HEIGHT
+        && myGame.board[row+1][column+1] == player
+        && myGame.board[row+2][column+2] == player
+        && myGame.board[row+3][column+3] == player)
+            return true;
+
+        // Diagonal down / right
+        if(column + 2 < WIDTH && row + 2 < HEIGHT && colummn - 1 >= 0 && row - 1 >= 0
+        && myGame.board[row-1][column-1] == player
+        && myGame.board[row+1][column+1] == player
+        && myGame.board[row+2][column+2] == player)
+            return true;
+
+        // Diagonal down / right
+        if(column + 1 < WIDTH && row + 1 < HEIGHT && colummn - 2 >= 0 && row - 2 >= 0
+        && myGame.board[row-2][column-2] == player
+        && myGame.board[row-1][column-1] == player
+        && myGame.board[row+1][column+1] == player)
+            return true;
+
+        // Diagonal down / right
+        if(column < WIDTH && row < HEIGHT && colummn - 3 >= 0 && row - 3 >= 0
+        && myGame.board[row-1][column-1] == player
+        && myGame.board[row-2][column-2] == player
+        && myGame.board[row-3][column-3] == player)
+            return true;
+
+
+        // Diagonal down / left
+        if(column - 3 >= 0 && row + 3 < HEIGHT
+        && myGame.board[row+1][column-1] == player
+        && myGame.board[row+2][column-2] == player
+        && myGame.board[row+3][column-3] == player)
+            return true;
+
+        // Diagonal down / left
+        if(colummn + 1 < WIDTH && row + 2 < HEIGHT && column - 2 >= 0 && row - 1 >= 0
+        && myGame.board[row-1][column+1] == player
+        && myGame.board[row+1][column-1] == player
+        && myGame.board[row+2][column-2] == player)
+            return true;
+
+        // Diagonal down / left
+        if(column + 2 < WIDTH && row + 1 < HEIGHT && colummn - 1 >= 0 && row - 2 >= 0
+        && myGame.board[row-2][column+2] == player
+        && myGame.board[row-1][column+1] == player
+        && myGame.board[row+1][column-1] == player)
+            return true;
+
+        // Diagonal down / left
+        if(column + 3 < WIDTH && row < HEIGHT && colummn >= 0 && row - 3 >= 0
+        && myGame.board[row-1][column+1] == player
+        && myGame.board[row-2][column+2] == player
+        && myGame.board[row-3][column+3] == player)
+            return true;
 
         return false;
     }

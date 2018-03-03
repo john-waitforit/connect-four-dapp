@@ -37,7 +37,7 @@ class App extends Component {
       connectFourInstance: null,
       isOwner: false,
       loading: false,
-      inGame: true,
+      inGame: false,
     };
   }
 
@@ -217,8 +217,8 @@ class App extends Component {
       else {
         let gameId = result.args.gameId.toNumber();
 
-        console.log("A game just started (id: " + gameId + ")");
         if(this.state.games[gameId].state === 2) {
+          console.log("A game just started (id: " + gameId + ")");
           this.setState((prevState) => {
             let games = prevState.games.slice();
             games[gameId].state = 1;
@@ -249,7 +249,7 @@ class App extends Component {
 
           {inGame ?
             <div>
-              <PlayGame/>
+              <PlayGame contract={connectFourInstance} openLoading={this.openLoading}/>
             </div>
             :
             <div>

@@ -16,12 +16,12 @@ class Cell extends Component {
     else if(this.props.value === 2)
       color = yellow;
 
-    let { hover } = this.props;
+    let { hover, onClick, onHover } = this.props;
 
     let cellColor = (hover ? light_blue : blue);
 
     return (
-      <div onMouseOver={this.props.onHover} style={{width: SIZE, height: SIZE, background: cellColor, border: '0px solid #595959', padding: SIZE/8, cursor: 'pointer'}}>
+      <div onClick={onClick} onMouseOver={onHover} style={{width: SIZE, height: SIZE, background: cellColor, border: '0px solid #595959', padding: SIZE/8, cursor: 'pointer'}}>
         <div style={{width: SIZE, height: SIZE, borderRadius: SIZE/2, background: color}}/>
       </div>
     )
@@ -40,6 +40,13 @@ class PlayGame extends Component {
     this.setState({columnHover: column});
   };
 
+  dropChip = (column) => {
+    let { contract } = this.props;
+    //contract.dropChip(column);
+    this.props.openLoading();
+  };
+
+
   render() {
     let {columnHover } = this.state;
 
@@ -56,7 +63,13 @@ class PlayGame extends Component {
     for(let row = 0; row < 6; row++){
       let newRow = [];
       for(let cell = 0; cell < 7; cell++) {
-        newRow.push(<Cell key={row*7+cell} hover={columnHover === cell} column={cell} value={board[row][cell]} onHover={() => this.hover(cell)}/>)
+        newRow.push(<Cell key={row*7+cell}
+                          hover={columnHover === cell}
+                          column={cell}
+                          value={board[row][cell]}
+                          onHover={() => this.hover(cell)}
+                          onClick={() => this.dropChip(cell)}
+        />)
       }
       rows.push(<div key={row} style={{display: 'flex'}}>{newRow}</div>)
     }

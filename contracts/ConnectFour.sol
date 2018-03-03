@@ -17,7 +17,7 @@ contract ConnectFour is Ownable {
         State state;
         bool isCreatorsTurn;
         bool isCreatorWinner;
-        uint[6][7] board;
+        uint[7][6] board;
     }
 
     Game[] games;
@@ -26,7 +26,7 @@ contract ConnectFour is Ownable {
     event GameCreated(uint gameId, string gameName, uint timeCreated, uint timeStarted, uint amountBet, address creator,
         address opponent, State state, bool isCreatorsTurn, bool isCreatorWinner);
     event GameStarted(uint gameId);
-    event Move(uint gameId, uint column, bool isCreator);
+    event Move(uint gameId, uint row, uint column, bool isCreator);
     event GameFinished(uint gameId, bool isCreator);
 
     modifier isInProgress(uint gameId) {
@@ -62,7 +62,7 @@ contract ConnectFour is Ownable {
         State state,
         bool isCreatorsTurn,
         bool isCreatorWinner,
-        uint[6][7] board)
+        uint[7][6] board)
     {
         Game storage myGame = games[_gameId];
         gameName = myGame.gameName;
@@ -94,7 +94,8 @@ contract ConnectFour is Ownable {
     }
 
     function createWaitingGame(string _name, uint _bet) external returns (uint){
-        uint[6][7] memory board;
+        uint[7][6] memory board;
+
         uint id = games.push(Game(_name, now, now, _bet, msg.sender, msg.sender, State.WaitingForOpponent, true, true, board)) - 1;
         GameCreated(id, _name, now, now, _bet, msg.sender, msg.sender, State.WaitingForOpponent, true, true);
         return id;
@@ -102,7 +103,8 @@ contract ConnectFour is Ownable {
 
     function createGame(string _name, address _opponent, uint _bet) external returns (uint){
         require(msg.sender != _opponent);
-        uint[6][7] memory board;
+        uint[7][6] memory board;
+
         uint id = games.push(Game(_name, now, now, _bet, msg.sender, _opponent, State.InProgress, true, true, board)) - 1;
         GameCreated(id, _name, now, now, _bet, msg.sender, _opponent, State.InProgress, true, true);
         GameStarted(id);
@@ -112,7 +114,7 @@ contract ConnectFour is Ownable {
     function dropChip(uint gameId, uint column) external isHisTurn(gameId) isInProgress(gameId) {
         Game storage myGame = games[gameId];
         require(column < 7 && column >= 0);
-        require(myGame.board[5][column] == 0);
+        require(myGame.board[0][column] == 0);
 
         uint row = 6;
         for(uint i = 5; i >= 0; i--) {
@@ -125,7 +127,7 @@ contract ConnectFour is Ownable {
 
         // This should always work since we checked if myGame.board[5][column] == 0
         if(row != 6) {
-            Move(gameId, column, myGame.isCreatorsTurn);
+            Move(gameId, row, column, myGame.isCreatorsTurn);
 
             if(isGameFinished(gameId, column, row)){
                 myGame.state = State.Ended;
@@ -145,6 +147,7 @@ contract ConnectFour is Ownable {
         Game storage myGame = games[gameId];
         uint player = myGame.isCreatorsTurn ? 1 : 2;
 
+        return false;
     }
 
     function generateRandomName() external view returns (string) {

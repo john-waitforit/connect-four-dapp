@@ -23,7 +23,7 @@ contract TestConnectFour {
         address expected = this;
 
         address creator;
-        (, creator) = connectFour.getGameData(0);
+        (,,,, creator,,,,,) = connectFour.getGameData(0);
 
         Assert.equal(creator, expected, "Creator of first game should be recorded");
     }

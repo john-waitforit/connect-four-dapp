@@ -112,10 +112,10 @@ contract ConnectFour is Ownable {
     function dropChip(uint gameId, uint column) external isHisTurn(gameId) isInProgress(gameId) {
         Game storage myGame = games[gameId];
         require(column < 7 && column >= 0);
+        require(myGame.board[5][column] == 0);
 
-        // Check if the player can play in this column
         uint row = 6;
-        for(uint i = 0; i < 6; i++) {
+        for(uint i = 5; i >= 0; i--) {
             if(myGame.board[i][column] == 0) {
                 row = i;
                 myGame.board[row][column] = myGame.isCreatorsTurn ? 1 : 2;
@@ -123,7 +123,7 @@ contract ConnectFour is Ownable {
             }
         }
 
-
+        // This should always work since we checked if myGame.board[5][column] == 0
         if(row != 6) {
             Move(gameId, column, myGame.isCreatorsTurn);
 
@@ -144,7 +144,7 @@ contract ConnectFour is Ownable {
     function isGameFinished(uint gameId, uint column, uint row) internal returns(bool) {
         Game storage myGame = games[gameId];
         uint player = myGame.isCreatorsTurn ? 1 : 2;
-        
+
     }
 
     function generateRandomName() external view returns (string) {

@@ -325,6 +325,7 @@ class App extends Component {
       <div className="App">
         <nav className="navbar pure-menu pure-menu-horizontal">
           <a href="#" className="pure-menu-heading pure-menu-link">Connect Four</a>
+          <div className="navbar pure-menu-heading " style={{marginLeft: 80}}>Non Payable Version</div>
           <div className="navbar-right pure-menu-heading ">
             {"Your address: " + (isOwner && "(owner) " ) +  account}
           </div>

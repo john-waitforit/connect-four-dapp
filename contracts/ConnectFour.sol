@@ -21,14 +21,13 @@ contract ConnectFour is Ownable {
         bool isCreatorsTurn;
         bool isCreatorWinner;
         uint[WIDTH][HEIGHT] board;
-        bool fullyPaid;
     }
 
     Game[] games;
     string[] public funnyNames;
 
     event GameCreated(uint gameId, string gameName, uint timeCreated, uint timeStarted, uint amountBet, address creator,
-        address opponent, State state, bool isCreatorsTurn, bool isCreatorWinner, uint[WIDTH][HEIGHT] board, bool fullyPaid);
+        address opponent, State state, bool isCreatorsTurn, bool isCreatorWinner, uint[WIDTH][HEIGHT] board);
     event GameStarted(uint gameId);
     event Move(uint gameId, uint row, uint column, bool isCreatorMove);
     event GameFinished(uint gameId, bool isCreatorWinner);
@@ -67,8 +66,7 @@ contract ConnectFour is Ownable {
         State state,
         bool isCreatorsTurn,
         bool isCreatorWinner,
-        uint[WIDTH][HEIGHT] board,
-        bool fullyPaid)
+        uint[WIDTH][HEIGHT] board)
     {
         Game storage myGame = games[_gameId];
         gameName = myGame.gameName;
@@ -81,20 +79,17 @@ contract ConnectFour is Ownable {
         isCreatorsTurn = myGame.isCreatorsTurn;
         isCreatorWinner = myGame.isCreatorWinner;
         board = myGame.board;
-        fullyPaid = myGame.fullyPaid;
     }
 
     // Join a game that was waiting for an opponent
-    function joinGame(uint _gameId) external payable {
+    function joinGame(uint _gameId) external {
         Game storage myGame = games[_gameId];
-        require(msg.value >= myGame.amountBet);
         require(myGame.state == State.WaitingForOpponent);
         require(msg.sender != myGame.creator);
 
         myGame.opponent = msg.sender;
         myGame.timeStarted = now;
         myGame.state = State.InProgress;
-        myGame.fullyPaid = true;
         GameStarted(_gameId);
     }
 
@@ -102,41 +97,27 @@ contract ConnectFour is Ownable {
         funnyNames.push(_name);
     }
 
-    function createWaitingGame(string _name, uint _bet) external payable returns (uint){
-        require(msg.value >= _bet);
+    function createWaitingGame(string _name, uint _bet) external returns (uint){
         uint[WIDTH][HEIGHT] memory board;
 
-        uint id = games.push(Game(_name, now, now, _bet, msg.sender, msg.sender, State.WaitingForOpponent, true, true, board, false)) - 1;
-        GameCreated(id, _name, now, now, _bet, msg.sender, msg.sender, State.WaitingForOpponent, true, true, board, false);
+        uint id = games.push(Game(_name, now, now, _bet, msg.sender, msg.sender, State.WaitingForOpponent, true, true, board)) - 1;
+        GameCreated(id, _name, now, now, _bet, msg.sender, msg.sender, State.WaitingForOpponent, true, true, board);
         return id;
     }
 
-    function createGame(string _name, address _opponent, uint _bet) external payable returns (uint){
+    function createGame(string _name, address _opponent, uint _bet) external returns (uint){
         require(msg.sender != _opponent);
-        require(msg.value >= _bet);
         uint[WIDTH][HEIGHT] memory board;
 
-        uint id = games.push(Game(_name, now, now, _bet, msg.sender, _opponent, State.InProgress, true, true, board, false)) - 1;
-        GameCreated(id, _name, now, now, _bet, msg.sender, _opponent, State.InProgress, true, true, board, false);
+        uint id = games.push(Game(_name, now, now, _bet, msg.sender, _opponent, State.InProgress, true, true, board)) - 1;
+        GameCreated(id, _name, now, now, _bet, msg.sender, _opponent, State.InProgress, true, true, board);
         return id;
     }
 
-    function payGame(uint gameId) external payable {
-        Game storage myGame = games[gameId];
-        require(msg.sender == myGame.opponent);
-        require(!myGame.fullyPaid);
-        require(msg.value >= myGame.amountBet);
-        myGame.fullyPaid = true;
-        GameStarted(gameId);
-    }
-
-    // Fallback function in case someone sends ether to the contract so it doesn't get lost
-    function() public payable {}
 
     function dropChip(uint gameId, uint column) external isHisTurn(gameId) isInProgress(gameId) {
         TestValue(0);
         Game storage myGame = games[gameId];
-        require(myGame.fullyPaid);
         require(column < WIDTH && column >= 0);
         require(myGame.board[0][column] == 0);
 

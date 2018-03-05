@@ -81,7 +81,6 @@ class App extends Component {
       isCreatorsTurn: gameArray[7],
       isCreatorWinner: gameArray[8],
       board: this.saveBoard(gameArray[9]),
-      fullyPaid: gameArray[10],
     };
 
     this.setState((prevState) => {
@@ -98,7 +97,7 @@ class App extends Component {
     let existed = false;
     this.setState((prevState) => {
       let games = prevState.games.slice();
-      let {gameId, gameName, timeCreated, timeStarted, amountBet, creator, opponent, state, isCreatorsTurn, isCreatorWinner, board, fullyPaid} = game;
+      let {gameId, gameName, timeCreated, timeStarted, amountBet, creator, opponent, state, isCreatorsTurn, isCreatorWinner, board} = game;
 
       gameId = gameId.toNumber();
 
@@ -116,7 +115,6 @@ class App extends Component {
         isCreatorsTurn,
         isCreatorWinner,
         board: this.saveBoard(board),
-        fullyPaid,
       };
 
       return {games}
@@ -172,24 +170,13 @@ class App extends Component {
     for(let i = 0; i < n; i++){
       let gameArray = await connectFourInstance.getGameData(i);
       let game = this.saveGameArray(i, gameArray);
-      console.log("First condition for fetch: ", ((game.creator == account || game.opponent == account) && game.state === 1 && game.fullyPaid));
-      console.log("First condition for fetch: ", (game.opponent == account && game.state === 1) && !game.fullyPaid);
-      console.log("FullyPaid: ", game.fullyPaid);
-      console.log("game: ", game);
-      console.log("gameArray.fullyPaid: ", gameArray[10]);
 
-      if((game.creator == account || game.opponent == account) && game.state === 1 && game.fullyPaid){
+      if((game.creator == account || game.opponent == account) && game.state === 1){
         this.setState((prevState) => {
           let myGames = prevState.myGames.slice();
           myGames.push(game.id);
           return {myGames}
         })
-      }
-      else if(game.opponent == account && game.state === 1){
-        if(!game.fullyPaid) {
-          console.log("A non paid game was detected", game);
-          connectFourInstance.payGame(game.id, {from: account, value: game.amountBet});
-        }
       }
     }
   }
@@ -237,15 +224,6 @@ class App extends Component {
               swal("You just started a game with a friend!", "As soon as he has paid the game will start!", "success");
             }
           }
-          else if ((result.args.creator != result.args.opponent) && result.args.opponent == account) {
-            if(!result.args.fullyPaid) {
-              console.log("A new game has started and is waiting for your payment");
-              connectFourInstance.payGame(result.args.gameId.toNumber(), {
-                from: account,
-                value: result.args.amountBet.toNumber()
-              })
-            }
-          }
         }
 
       }
@@ -268,15 +246,17 @@ class App extends Component {
       else {
         let gameId = result.args.gameId.toNumber();
 
-        if(this.state.games[gameId].state === 1) {
+        if(this.state.games[gameId].state === 1 || this.state.games[gameId].state === 2) {
           console.log("A game just started (id: " + gameId + ")");
           this.setState((prevState) => {
             let games = prevState.games.slice();
             games[gameId].state = 1;
-            games[gameId].fullyPaid = true;
             games[gameId].timeStarted = new XDate();
             let myGames = prevState.myGames.slice();
-            myGames.push(gameId);
+            let index = myGames.indexOf(gameId);
+            if(index === -1) {
+              myGames.push(gameId);
+            }
             return {games, myGames}
           })
         }

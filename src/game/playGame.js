@@ -16,12 +16,12 @@ class Cell extends Component {
     else if(this.props.value === 2)
       color = yellow;
 
-    let { hover, onClick, onHover } = this.props;
+    let { hover, onClick, onHover, isMyTurn } = this.props;
 
     let cellColor = (hover ? light_blue : blue);
 
     return (
-      <div onClick={onClick} onMouseOver={onHover} style={{width: SIZE, height: SIZE, background: cellColor, border: '0px solid #595959', padding: SIZE/8, cursor: 'pointer'}}>
+      <div onClick={onClick} onMouseOver={onHover} style={{width: SIZE, height: SIZE, background: cellColor, border: '0px solid #595959', padding: SIZE/8, cursor: isMyTurn ? 'pointer' : ''}}>
         <div style={{width: SIZE, height: SIZE, borderRadius: SIZE/2, background: color}}/>
       </div>
     )
@@ -41,23 +41,24 @@ class PlayGame extends Component {
   };
 
   dropChip = (column) => {
-    let { contract } = this.props;
-    //contract.dropChip(column);
+    let { contract, game, account } = this.props;
+    contract.dropChip(game.id, column, {from: account});
     this.props.openLoading();
   };
 
 
   render() {
     let {columnHover } = this.state;
+    let {game, account} = this.props;
 
-    let board = [
-      [0,0,0,0,0,0,0],
-      [0,0,0,0,0,0,0],
-      [0,0,0,0,0,1,0],
-      [0,0,0,0,1,2,0],
-      [0,0,2,1,2,1,0],
-      [0,0,1,2,2,1,2],
-    ];
+    let board = game.board;
+    let isCreator = game.creator == account;
+
+    let isMyTurn = (isCreator && game.isCreatorsTurn) || (!isCreator && !game.isCreatorsTurn);
+
+    let myColor = isCreator ? red : yellow;
+    let hisColor = isCreator ? yellow : red;
+    let turnColor = isMyTurn ? myColor : hisColor;
 
     let rows = [];
     for(let row = 0; row < 6; row++){
@@ -65,19 +66,28 @@ class PlayGame extends Component {
       for(let cell = 0; cell < 7; cell++) {
         newRow.push(<Cell key={row*7+cell}
                           hover={columnHover === cell}
+                          isMyTurn={isMyTurn}
                           column={cell}
                           value={board[row][cell]}
-                          onHover={() => this.hover(cell)}
-                          onClick={() => this.dropChip(cell)}
+                          onHover={() => isMyTurn && this.hover(cell)}
+                          onClick={() => isMyTurn && this.dropChip(cell)}
         />)
       }
-      rows.push(<div key={row} style={{display: 'flex'}}>{newRow}</div>)
+      rows.push(<div key={row} style={{display: 'flex', justifyContent: 'center'}}>{newRow}</div>)
     }
 
-    let turnColor = red;
-
     return (
-      <Paper style={{padding: 20}}>
+      <Paper style={{padding: '5px 20px 20px 20px'}}>
+
+        <div style={{marginBottom:10}}>
+          <h1>{game.gameName}</h1>
+          <h2 style={{textAlign: 'center', marginBottom: 10, fontWeight: 'bold'}}>
+            {"Playing against:"}
+          </h2>
+          <div style={{textAlign: 'center'}}>
+            {(isCreator ? game.opponent : game.creator)}
+          </div>
+        </div>
 
         <div style={{padding:20, backgroundColor: "#13a9c6"}}>
           {rows}
@@ -85,15 +95,17 @@ class PlayGame extends Component {
 
         <div style={{display: 'flex', justifyContent: 'space-between', margin: 15}}>
           <div style={{display: 'flex', alignItems: 'center'}}>
-            <div style={{width: SIZE, height: SIZE, borderRadius: SIZE/2, background: red, marginRight: 15}}/>
+            <div style={{width: SIZE, height: SIZE, borderRadius: SIZE/2, background: myColor, marginRight: 15}}/>
             You
           </div>
 
-          <div style={{background: turnColor, padding: "5px 30px 5px 30px", borderRadius: 20, display: 'flex', justifyContent: "center", alignItems: 'center'}}>Go!</div>
+          <div style={{background: turnColor, padding: "5px 30px 5px 30px", borderRadius: 20, display: 'flex', justifyContent: "center", alignItems: 'center'}}>
+            Go!
+          </div>
 
           <div style={{display: 'flex', alignItems:'center'}}>
             Him
-            <div style={{width: SIZE, height: SIZE, borderRadius: SIZE/2, background: yellow, marginLeft: 15}}/>
+            <div style={{width: SIZE, height: SIZE, borderRadius: SIZE/2, background: hisColor, marginLeft: 15}}/>
           </div>
 
         </div>

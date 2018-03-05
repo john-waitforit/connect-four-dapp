@@ -12,19 +12,18 @@ contract('ConnectFour', function ([owner, opponent]) {
   });
 
   it('create a game', async () => {
-    await connectFour.createGame('Test game 1', 0x627306090abab3a6e1400e9345bc60c78a8bef57, 1);
+    await connectFour.createGame('Test game 1', opponent, 1);
     let numberOfGames = await connectFour.getNumberOfGames();
 
     assert.equal(numberOfGames, 1);
   });
 
   it('drop a chip', async () => {
-    await connectFour.createGame('Test game 1', 0x627306090abab3a6e1400e9345bc60c78a8bef57, 1);
-    let column = 0;
-    await connectFour.dropChip(0, column);
+    await connectFour.createGame('Test game 1', opponent, 1, {from: owner});
+    await connectFour.dropChip(0, 0, {from: owner});
     let game = saveGame(await connectFour.getGameData(0));
 
-    assert.equal(game.board[5][column], 1);
+    assert.equal(game.board[5][0], 1);
   });
 
   it('drop two chips', async () => {
@@ -40,19 +39,34 @@ contract('ConnectFour', function ([owner, opponent]) {
 
   it('Four vertical', async () => {
     await connectFour.createGame('Test game 1', opponent, 1);
-    let column = 0;
+    let column = 1;
+    let columnBis = 4;
     await connectFour.dropChip(0, column, {from: owner});
-    await connectFour.dropChip(0, 1, {from: opponent});
+    await connectFour.dropChip(0, columnBis, {from: opponent});
     await connectFour.dropChip(0, column, {from: owner});
-    await connectFour.dropChip(0, 1, {from: opponent});
+    await connectFour.dropChip(0, columnBis, {from: opponent});
     await connectFour.dropChip(0, column, {from: owner});
-    await connectFour.dropChip(0, 1, {from: opponent});
+    await connectFour.dropChip(0, columnBis, {from: opponent});
     await connectFour.dropChip(0, column, {from: owner});
     let game = saveGame(await connectFour.getGameData(0));
 
     assert.equal(game.state, 0);
   });
 
+  it('Four horizontal', async () => {
+    await connectFour.createGame('Test game 1', opponent, 1);
+    let column = 0;
+    await connectFour.dropChip(0, column, {from: owner});
+    await connectFour.dropChip(0, column, {from: opponent});
+    await connectFour.dropChip(0, column+1, {from: owner});
+    await connectFour.dropChip(0, column+1, {from: opponent});
+    await connectFour.dropChip(0, column+2, {from: owner});
+    await connectFour.dropChip(0, column+2, {from: opponent});
+    await connectFour.dropChip(0, column+3, {from: owner});
+    let game = saveGame(await connectFour.getGameData(0));
+
+    assert.equal(game.state, 0);
+  });
 
 
 });

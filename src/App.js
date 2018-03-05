@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import ConnectFour from '../output/contracts/ConnectFour.json';
+import ConnectFour from '../build/contracts/ConnectFour.json';
 import getWeb3 from './utils/getWeb3';
 
 import swal from 'sweetalert';
@@ -37,7 +37,8 @@ class App extends Component {
       connectFourInstance: null,
       isOwner: false,
       loading: false,
-      inGame: false,
+      showInProgressGames: false,
+      myGames: [],
     };
   }
 
@@ -68,23 +69,28 @@ class App extends Component {
   };
 
   saveGameArray(id, gameArray) {
+    let game = {
+      id: id,
+      gameName: gameArray[0],
+      timeCreated: new XDate(gameArray[1].toNumber() * 1000),
+      timeStarted: new XDate(gameArray[2].toNumber() * 1000),
+      amountBet: gameArray[3].toNumber(),
+      creator: gameArray[4],
+      opponent: gameArray[5],
+      state: gameArray[6].toNumber(),
+      isCreatorsTurn: gameArray[7],
+      isCreatorWinner: gameArray[8],
+      board: this.saveBoard(gameArray[9]),
+      fullyPaid: gameArray[10],
+    };
+
     this.setState((prevState) => {
       let games = prevState.games.slice();
-      games[id] = {
-        id: id,
-        gameName: gameArray[0],
-        timeCreated: new XDate(gameArray[1].toNumber() * 1000),
-        timeStarted: new XDate(gameArray[2].toNumber() * 1000),
-        amountBet: gameArray[3].toNumber(),
-        creator: gameArray[4],
-        opponent: gameArray[5],
-        state: gameArray[6].toNumber(),
-        isCreatorsTurn: gameArray[7],
-        isCreatorWinner: gameArray[8]
-      };
-
+      games[id] = game;
       return {games}
-    })
+    });
+
+    return game;
 
   }
 
@@ -92,7 +98,7 @@ class App extends Component {
     let existed = false;
     this.setState((prevState) => {
       let games = prevState.games.slice();
-      let {gameId, gameName, timeCreated, timeStarted, amountBet, creator, opponent, state, isCreatorsTurn, isCreatorWinner,} = game;
+      let {gameId, gameName, timeCreated, timeStarted, amountBet, creator, opponent, state, isCreatorsTurn, isCreatorWinner, board, fullyPaid} = game;
 
       gameId = gameId.toNumber();
 
@@ -100,21 +106,35 @@ class App extends Component {
 
       games[gameId] = {
         id: gameId,
-        gameName: gameName,
+        gameName,
         timeCreated: new XDate(timeCreated.toNumber() * 1000),
         timeStarted: new XDate(timeStarted.toNumber() * 1000),
         amountBet: amountBet.toNumber(),
-        creator: creator,
-        opponent: opponent,
+        creator,
+        opponent,
         state: state.toNumber(),
-        isCreatorsTurn: isCreatorsTurn,
-        isCreatorWinner: isCreatorWinner
+        isCreatorsTurn,
+        isCreatorWinner,
+        board: this.saveBoard(board),
+        fullyPaid,
       };
 
       return {games}
     });
 
     return existed;
+  }
+
+  saveBoard(boardBigNumber) {
+    let board = [];
+    for(let row = 0; row < 6; row++) {
+      let chips = [];
+      for(let column = 0; column < 6; column++) {
+        chips.push(boardBigNumber[row][column].toNumber())
+      }
+      board.push(chips);
+    }
+    return board;
   }
 
   instantiateContract() {
@@ -137,18 +157,40 @@ class App extends Component {
 
         this.listenForNewGame();
         this.listenForGameStarted();
+        this.listenForMove();
+        this.listenForEndGame();
 
       })
     })
   }
 
   async fetchGames() {
-    let {connectFourInstance} = this.state;
+    let {connectFourInstance, account, web3} = this.state;
     let n = await connectFourInstance.getNumberOfGames();
-    this.setState({numberOfGames: n});
+    this.setState({numberOfGames: n.toNumber()});
     console.log("Number of games:", n.toNumber());
     for(let i = 0; i < n; i++){
-      this.saveGameArray(i, await connectFourInstance.getGameData(i));
+      let gameArray = await connectFourInstance.getGameData(i);
+      let game = this.saveGameArray(i, gameArray);
+      console.log("First condition for fetch: ", ((game.creator == account || game.opponent == account) && game.state === 1 && game.fullyPaid));
+      console.log("First condition for fetch: ", (game.opponent == account && game.state === 1) && !game.fullyPaid);
+      console.log("FullyPaid: ", game.fullyPaid);
+      console.log("game: ", game);
+      console.log("gameArray.fullyPaid: ", gameArray[10]);
+
+      if((game.creator == account || game.opponent == account) && game.state === 1 && game.fullyPaid){
+        this.setState((prevState) => {
+          let myGames = prevState.myGames.slice();
+          myGames.push(game.id);
+          return {myGames}
+        })
+      }
+      else if(game.opponent == account && game.state === 1){
+        if(!game.fullyPaid) {
+          console.log("A non paid game was detected", game);
+          connectFourInstance.payGame(game.id, {from: account, value: game.amountBet});
+        }
+      }
     }
   }
 
@@ -172,7 +214,7 @@ class App extends Component {
   };
 
   listenForNewGame = () => {
-    let {connectFourInstance, account} = this.state;
+    let {connectFourInstance, account, web3} = this.state;
 
     let createGameEvent = connectFourInstance.GameCreated();
     console.debug("Watching for new games...");
@@ -187,12 +229,21 @@ class App extends Component {
         let existed = this.saveGameObject(result.args);
 
         if (!existed) {
-          if (result.args.creator === account) {
-            if (result.args.opponent === account) {
+          if (result.args.creator == account) {
+            if(result.args.creator == result.args.opponent){
               swal("You just created an empty game!", "An opponent will probably join you soon ;)", "success");
             }
             else {
-              swal("You just started a game with a friend!", "", "success");
+              swal("You just started a game with a friend!", "As soon as he has paid the game will start!", "success");
+            }
+          }
+          else if ((result.args.creator != result.args.opponent) && result.args.opponent == account) {
+            if(!result.args.fullyPaid) {
+              console.log("A new game has started and is waiting for your payment");
+              connectFourInstance.payGame(result.args.gameId.toNumber(), {
+                from: account,
+                value: result.args.amountBet.toNumber()
+              })
             }
           }
         }
@@ -217,13 +268,16 @@ class App extends Component {
       else {
         let gameId = result.args.gameId.toNumber();
 
-        if(this.state.games[gameId].state === 2) {
+        if(this.state.games[gameId].state === 1) {
           console.log("A game just started (id: " + gameId + ")");
           this.setState((prevState) => {
             let games = prevState.games.slice();
             games[gameId].state = 1;
+            games[gameId].fullyPaid = true;
             games[gameId].timeStarted = new XDate();
-            return {games}
+            let myGames = prevState.myGames.slice();
+            myGames.push(gameId);
+            return {games, myGames}
           })
         }
       }
@@ -231,8 +285,61 @@ class App extends Component {
 
   };
 
+  listenForMove = () => {
+    let {connectFourInstance} = this.state;
+    let moveEvent = connectFourInstance.Move();
+    console.debug("Watching for moves...");
+    moveEvent.watch((error, result) => {
+      this.stopLoading();
+      let {column, row, gameId, isCreatorMove} = result.args;
+      gameId = gameId.toNumber();
+      column = column.toNumber();
+      row = row.toNumber();
+
+      if(isCreatorMove === this.state.games[gameId].isCreatorsTurn) {
+        console.log("Detected a move, gameId: " + gameId + ", (" + row + ', ' + column + ')');
+        this.setState((prevState) => {
+          let games = prevState.games.slice();
+          games[gameId].board[row][column] = isCreatorMove ? 1 : 2;
+          games[gameId].isCreatorsTurn = !isCreatorMove;
+          return {games}
+        })
+      }
+
+    });
+
+  };
+
+  listenForEndGame = () => {
+    let {connectFourInstance, games, account} = this.state;
+    let endEvent = connectFourInstance.GameFinished();
+    console.debug("Watching for finished games...");
+    endEvent.watch((error, result) => {
+      this.stopLoading();
+      let {isCreatorWinner, gameId} = result.args;
+      let game = games[gameId];
+      if(game.state === 1) {
+        let isWinner = isCreatorWinner === (game.creator == account);
+        swal("Game finished", isWinner ? "You won!" : "You lost!");
+        this.setState((prevState) => {
+          let games = prevState.games.slice();
+          games[gameId].state = 0;
+          games[gameId].isCreatorWinner = isCreatorWinner;
+
+          let myGames = prevState.myGames.slice();
+          let indexToRemove = myGames.indexOf(gameId);
+          if(indexToRemove > -1) {
+            myGames.splice(indexToRemove, 1);
+          }
+
+          return {games};
+        });
+      }
+    });
+  };
+
   render() {
-    const {inGame, loading, account, isOwner, funnyName, games, connectFourInstance} = this.state;
+    const {showInProgressGames, loading, account, isOwner, funnyName, games, connectFourInstance, myGames, web3} = this.state;
 
     return (
       <div className="App">
@@ -247,28 +354,47 @@ class App extends Component {
 
           <h1>Connect Four! (aka Four in a row)</h1>
 
-          {inGame ?
+          {myGames.length !== 0 &&
+
+          <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center'}}>
+            <Button variant="raised" onClick={() => this.setState((prevState) => {return {showInProgressGames: !prevState.showInProgressGames}})} style={{background: "#c61d59", color: "#fff", margin: 30}}>
+              {showInProgressGames ? "Back to list" : "See my in progress games"}
+              <VideoGame style={{marginLeft: 5}}/>
+            </Button>
+          </div>
+          }
+
+          {showInProgressGames ?
             <div>
-              <PlayGame contract={connectFourInstance} openLoading={this.openLoading}/>
+              {myGames.length === 0 ?
+                <h2>No games for the moment</h2>
+                :
+                <div>
+                  {myGames.map((gameId) =>
+                    <PlayGame key={gameId} contract={connectFourInstance} account={account} openLoading={this.openLoading} game={games[gameId]}/>)}
+                </div>
+              }
             </div>
             :
             <div>
-              <CreateGame defaultName={funnyName} account={account} contract={connectFourInstance} openLoading={this.openLoading}/>
+              <CreateGame defaultName={funnyName} account={account} contract={connectFourInstance} openLoading={this.openLoading} web3={web3}/>
 
               <br/>
 
-              <ListGames account={account} contract={connectFourInstance} openLoading={this.openLoading} games={games} state={2}/>
+              <ListGames account={account} contract={connectFourInstance} openLoading={this.openLoading} games={games} state={2} web3={web3}/>
               <br/>
-              <ListGames account={account} contract={connectFourInstance} openLoading={this.openLoading} games={games} state={1}/>
+              <ListGames account={account} contract={connectFourInstance} openLoading={this.openLoading} games={games} state={1} web3={web3}/>
               <br/>
-              <ListGames account={account} contract={connectFourInstance} openLoading={this.openLoading} games={games} state={0}/>
+              <ListGames account={account} contract={connectFourInstance} openLoading={this.openLoading} games={games} state={0} web3={web3}/>
 
-              <Button variant="raised" onClick={this.batchCreateGames} style={{background: "#c61d59", color: "#fff", margin: 30}}>
+              {/*<Button variant="raised" onClick={this.batchCreateGames} style={{background: "#c61d59", color: "#fff", margin: 30}}>
                 {"Test Button"}
-                <VideoGame/>
-              </Button>
+                <VideoGame style={{marginLeft: 5}}/>
+              </Button>*/}
             </div>
           }
+
+
 
           <Modal open={loading} onClose={this.stopLoading} little>
             <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'}}>
@@ -277,6 +403,16 @@ class App extends Component {
             </div>
           </Modal>
         </div>
+
+        <div style={{textAlign: 'center', backgroundColor: 'black', height: 100, width: '100%', display: 'flex', justifyContent: 'center', flexDirection: 'column'}}>
+          <p style={{color: 'white', display: 'flex', justifyContent: 'center', alignItems: 'center'}}>
+            Designed by Jonathan Wagner. All Rights reserved © 2018.
+          </p>
+          <div>
+            <a href="https://github.com/johnjohnwagner/connect-four-dapp" style={{color: '#9ae7e4', textAlign: 'center'}}>Github project</a>
+          </div>
+        </div>
+
       </div>
     );
   }

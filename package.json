@@ -61,11 +61,11 @@
     "xdate": "^0.8.2"
   },
   "scripts": {
-    "start": "mv build output && node scripts/start.js",
-    "build": "rm -rf output && mv build output && node scripts/build.js",
+    "start": "node scripts/start.js",
+    "build": "node scripts/build.js",
     "test": "node scripts/test.js --env=jsdom",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d build",
+    "deploy": "gh-pages -d build_webpack",
     "eject": "react-scripts eject"
   },
   "jest": {

@@ -8,6 +8,7 @@ contract ConnectFour is Ownable {
     enum State { Ended, InProgress, WaitingForOpponent }
     uint constant HEIGHT = 6;
     uint constant WIDTH = 7;
+    uint contractShare = 10; // percentage kept for the contract when rewarding winner
 
     struct Game {
         string gameName;
@@ -20,16 +21,18 @@ contract ConnectFour is Ownable {
         bool isCreatorsTurn;
         bool isCreatorWinner;
         uint[WIDTH][HEIGHT] board;
+        bool fullyPaid;
     }
 
     Game[] games;
     string[] public funnyNames;
 
     event GameCreated(uint gameId, string gameName, uint timeCreated, uint timeStarted, uint amountBet, address creator,
-        address opponent, State state, bool isCreatorsTurn, bool isCreatorWinner);
+        address opponent, State state, bool isCreatorsTurn, bool isCreatorWinner, uint[WIDTH][HEIGHT] board, bool fullyPaid);
     event GameStarted(uint gameId);
-    event Move(uint gameId, uint row, uint column, bool isCreator);
-    event GameFinished(uint gameId, bool isCreator);
+    event Move(uint gameId, uint row, uint column, bool isCreatorMove);
+    event GameFinished(uint gameId, bool isCreatorWinner);
+    event TestValue(uint value1);
 
     modifier isInProgress(uint gameId) {
         Game storage myGame = games[gameId];
@@ -64,7 +67,8 @@ contract ConnectFour is Ownable {
         State state,
         bool isCreatorsTurn,
         bool isCreatorWinner,
-        uint[WIDTH][HEIGHT] board)
+        uint[WIDTH][HEIGHT] board,
+        bool fullyPaid)
     {
         Game storage myGame = games[_gameId];
         gameName = myGame.gameName;
@@ -77,17 +81,20 @@ contract ConnectFour is Ownable {
         isCreatorsTurn = myGame.isCreatorsTurn;
         isCreatorWinner = myGame.isCreatorWinner;
         board = myGame.board;
+        fullyPaid = myGame.fullyPaid;
     }
 
     // Join a game that was waiting for an opponent
-    function joinGame(uint _gameId) external {
+    function joinGame(uint _gameId) external payable {
         Game storage myGame = games[_gameId];
+        require(msg.value >= myGame.amountBet);
         require(myGame.state == State.WaitingForOpponent);
         require(msg.sender != myGame.creator);
 
         myGame.opponent = msg.sender;
         myGame.timeStarted = now;
         myGame.state = State.InProgress;
+        myGame.fullyPaid = true;
         GameStarted(_gameId);
     }
 
@@ -95,32 +102,47 @@ contract ConnectFour is Ownable {
         funnyNames.push(_name);
     }
 
-    function createWaitingGame(string _name, uint _bet) external returns (uint){
+    function createWaitingGame(string _name, uint _bet) external payable returns (uint){
+        require(msg.value >= _bet);
         uint[WIDTH][HEIGHT] memory board;
 
-        uint id = games.push(Game(_name, now, now, _bet, msg.sender, msg.sender, State.WaitingForOpponent, true, true, board)) - 1;
-        GameCreated(id, _name, now, now, _bet, msg.sender, msg.sender, State.WaitingForOpponent, true, true);
+        uint id = games.push(Game(_name, now, now, _bet, msg.sender, msg.sender, State.WaitingForOpponent, true, true, board, false)) - 1;
+        GameCreated(id, _name, now, now, _bet, msg.sender, msg.sender, State.WaitingForOpponent, true, true, board, false);
         return id;
     }
 
-    function createGame(string _name, address _opponent, uint _bet) external returns (uint){
+    function createGame(string _name, address _opponent, uint _bet) external payable returns (uint){
         require(msg.sender != _opponent);
+        require(msg.value >= _bet);
         uint[WIDTH][HEIGHT] memory board;
 
-        uint id = games.push(Game(_name, now, now, _bet, msg.sender, _opponent, State.InProgress, true, true, board)) - 1;
-        GameCreated(id, _name, now, now, _bet, msg.sender, _opponent, State.InProgress, true, true);
-        GameStarted(id);
+        uint id = games.push(Game(_name, now, now, _bet, msg.sender, _opponent, State.InProgress, true, true, board, false)) - 1;
+        GameCreated(id, _name, now, now, _bet, msg.sender, _opponent, State.InProgress, true, true, board, false);
         return id;
     }
+
+    function payGame(uint gameId) external payable {
+        Game storage myGame = games[gameId];
+        require(msg.sender == myGame.opponent);
+        require(!myGame.fullyPaid);
+        require(msg.value >= myGame.amountBet);
+        myGame.fullyPaid = true;
+        GameStarted(gameId);
+    }
+
+    // Fallback function in case someone sends ether to the contract so it doesn't get lost
+    function() public payable {}
 
     function dropChip(uint gameId, uint column) external isHisTurn(gameId) isInProgress(gameId) {
+        TestValue(0);
         Game storage myGame = games[gameId];
+        require(myGame.fullyPaid);
         require(column < WIDTH && column >= 0);
         require(myGame.board[0][column] == 0);
 
         uint row = HEIGHT;
-        for(uint i = HEIGHT - 1; i >= 0; i--) {
-            if(myGame.board[i][column] == 0) {
+        for (uint i = HEIGHT - 1; i >= 0; i--) {
+            if (myGame.board[i][column] == 0) {
                 row = i;
                 myGame.board[row][column] = myGame.isCreatorsTurn ? 1 : 2;
                 break;
@@ -128,107 +150,128 @@ contract ConnectFour is Ownable {
         }
 
         // This should always work since we checked if myGame.board[5][column] == 0
-        if(row != HEIGHT) {
+        if (row != HEIGHT) {
             Move(gameId, row, column, myGame.isCreatorsTurn);
 
-            if(isGameFinished(gameId, column, row)){
+            if (isGameFinished(gameId, column, row)) {
                 myGame.state = State.Ended;
                 myGame.isCreatorWinner = myGame.isCreatorsTurn;
+                if (myGame.isCreatorWinner) {
+                    myGame.creator.transfer((100 - contractShare) * myGame.amountBet / 100);
+                }
+                else {
+                    myGame.opponent.transfer((100 - contractShare) * myGame.amountBet / 100);
+                }
                 GameFinished(gameId, myGame.isCreatorsTurn);
             }
             else {
                 myGame.isCreatorsTurn = !myGame.isCreatorsTurn;
             }
+            TestValue(99999);
+
 
         }
+    }
 
+    function changeContractShare(uint _contractShare) external onlyOwner {
+        require(_contractShare < 100);
+        require(_contractShare >= 0);
+        contractShare = _contractShare;
     }
 
     // Look for four chips aligned
-    function isGameFinished(uint gameId, uint column, uint row) internal returns(bool) {
+    function isGameFinished(uint gameId, uint column, uint row) internal view returns(bool) {
         Game storage myGame = games[gameId];
         uint player = myGame.isCreatorsTurn ? 1 : 2;
         require(myGame.board[row][column] == player);
 
+        // Used signed integers for the index checks otherwise they won't work
+        int s_row = int(row);
+        int s_column = int(column);
+        int s_HEIGHT = int(HEIGHT);
+        int s_WIDTH = int(WIDTH);
+
         // Vertical
-        if(row + 3 < HEIGHT
+        if(s_row + 3 < s_HEIGHT
         && myGame.board[row+1][column] == player
         && myGame.board[row+2][column] == player
         && myGame.board[row+3][column] == player)
             return true;
 
         // Vertical
-        if(row + 2 < HEIGHT && row - 1 >= 0
+        if(s_row + 2 < s_HEIGHT && s_row - 1 >= 0
         && myGame.board[row+1][column] == player
         && myGame.board[row+2][column] == player
         && myGame.board[row-1][column] == player)
             return true;
 
         // Vertical
-        if(row + 1 < HEIGHT && row - 2 >= 0
+        if(s_row + 1 < s_HEIGHT && s_row - 2 >= 0
         && myGame.board[row+1][column] == player
         && myGame.board[row-1][column] == player
         && myGame.board[row-2][column] == player)
             return true;
 
         // Vertical
-        if(row < HEIGHT && row - 3 >= 0
+        if(s_row < s_HEIGHT && s_row - 3 >= 0
         && myGame.board[row-1][column] == player
         && myGame.board[row-2][column] == player
         && myGame.board[row-3][column] == player)
             return true;
 
         // Horizontal
-        if(column + 3 < WIDTH
+        if (s_column + 3 < s_WIDTH
         && myGame.board[row][column+1] == player
         && myGame.board[row][column+2] == player
         && myGame.board[row][column+3] == player)
             return true;
 
         // Horizontal
-        if(column + 2 < WIDTH && column - 1 >= 0
+        if (s_column + 2 < s_WIDTH && s_column - 1 >= 0
         && myGame.board[row][column-1] == player
         && myGame.board[row][column+1] == player
         && myGame.board[row][column+2] == player)
             return true;
 
         // Horizontal
-        if(column + 1 < WIDTH && column - 2 >= 0
-        && myGame.board[row][column-2] == player
-        && myGame.board[row][column-1] == player
-        && myGame.board[row][column+1] == player)
+        if ((s_column + 1 < s_WIDTH) && ((s_column - 2) >= 0)
+        && (myGame.board[row][column-2] == player)
+        && (myGame.board[row][column-1] == player)
+            && (myGame.board[row][column+1] == player)){
             return true;
 
+        }
+
         // Horizontal
-        if(column < WIDTH && column - 3 >= 0
+        if(s_column - 3 >= 0
         && myGame.board[row][column-3] == player
         && myGame.board[row][column-2] == player
         && myGame.board[row][column-1] == player)
             return true;
 
         // Diagonal down / right
-        if(column + 3 < WIDTH && row + 3 < HEIGHT
+        if(s_column + 3 < s_WIDTH && s_row + 3 < s_HEIGHT
         && myGame.board[row+1][column+1] == player
         && myGame.board[row+2][column+2] == player
         && myGame.board[row+3][column+3] == player)
             return true;
 
         // Diagonal down / right
-        if(column + 2 < WIDTH && row + 2 < HEIGHT && colummn - 1 >= 0 && row - 1 >= 0
+        if(s_column + 2 < s_WIDTH && s_row + 2 < s_HEIGHT && column - 1 >= 0 && s_row - 1 >= 0
         && myGame.board[row-1][column-1] == player
         && myGame.board[row+1][column+1] == player
         && myGame.board[row+2][column+2] == player)
             return true;
 
         // Diagonal down / right
-        if(column + 1 < WIDTH && row + 1 < HEIGHT && colummn - 2 >= 0 && row - 2 >= 0
+        if(s_column + 1 < s_WIDTH && s_row + 1 < s_HEIGHT && s_column - 2 >= 0 && s_row - 2 >= 0
         && myGame.board[row-2][column-2] == player
         && myGame.board[row-1][column-1] == player
         && myGame.board[row+1][column+1] == player)
             return true;
 
         // Diagonal down / right
-        if(column < WIDTH && row < HEIGHT && colummn - 3 >= 0 && row - 3 >= 0
+        if(s_column < s_WIDTH && s_row < s_HEIGHT && s_column - 3 >= 0 && s_row - 3 >= 0
         && myGame.board[row-1][column-1] == player
         && myGame.board[row-2][column-2] == player
         && myGame.board[row-3][column-3] == player)
@@ -236,28 +279,28 @@ contract ConnectFour is Ownable {
 
 
         // Diagonal down / left
-        if(column - 3 >= 0 && row + 3 < HEIGHT
+        if(s_column - 3 >= 0 && s_row + 3 < s_HEIGHT
         && myGame.board[row+1][column-1] == player
         && myGame.board[row+2][column-2] == player
         && myGame.board[row+3][column-3] == player)
             return true;
 
         // Diagonal down / left
-        if(colummn + 1 < WIDTH && row + 2 < HEIGHT && column - 2 >= 0 && row - 1 >= 0
+        if(s_column + 1 < s_WIDTH && s_row + 2 < s_HEIGHT && s_column - 2 >= 0 && s_row - 1 >= 0
         && myGame.board[row-1][column+1] == player
         && myGame.board[row+1][column-1] == player
         && myGame.board[row+2][column-2] == player)
             return true;
 
         // Diagonal down / left
-        if(column + 2 < WIDTH && row + 1 < HEIGHT && colummn - 1 >= 0 && row - 2 >= 0
+        if(s_column + 2 < s_WIDTH && s_row + 1 < s_HEIGHT && s_column - 1 >= 0 && s_row - 2 >= 0
         && myGame.board[row-2][column+2] == player
         && myGame.board[row-1][column+1] == player
         && myGame.board[row+1][column-1] == player)
             return true;
 
         // Diagonal down / left
-        if(column + 3 < WIDTH && row < HEIGHT && colummn >= 0 && row - 3 >= 0
+        if(s_column + 3 < s_WIDTH && s_row < s_HEIGHT && s_column >= 0 && s_row - 3 >= 0
         && myGame.board[row-1][column+1] == player
         && myGame.board[row-2][column+2] == player
         && myGame.board[row-3][column+3] == player)

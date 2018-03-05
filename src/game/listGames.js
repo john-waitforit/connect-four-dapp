@@ -7,14 +7,15 @@ import {Button} from "material-ui";
 
 class JoinGame extends Component {
 
-  joinGame = (gameId) => {
-    this.props.contract.joinGame(gameId, {from: this.props.account});
+  joinGame = (gameId, amountBet) => {
+    let {account} = this.props;
+    this.props.contract.joinGame(gameId, {from: account, value: amountBet});
     this.props.openLoading();
   };
 
   render() {
 
-    let {games, state} = this.props;
+    let {games, state, web3} = this.props;
 
     games = games.filter((game) => game.state === state).sort((a, b) => a.timeStarted < b.timeStarted);
 
@@ -57,9 +58,9 @@ class JoinGame extends Component {
                   <TableCell numeric>{game.id}</TableCell>
                   <TableCell>{game.gameName}</TableCell>
                   <TableCell>{(state === 2 ? game.timeCreated : game.timeStarted).toString("h(:mm)TT - MMM d, yyyy")}</TableCell>
-                  <TableCell>{game.amountBet + " eth"}</TableCell>
+                  <TableCell>{web3.fromWei(game.amountBet, 'ether') + " eth"}</TableCell>
                   <TableCell>{game.state === 2 ?
-                    <Button variant="raised" onClick={() => this.joinGame(game.id)} style={{background: "#1e9b26", color: "#fff"}}>
+                    <Button variant="raised" onClick={() => this.joinGame(game.id, game.amountBet)} style={{background: "#1e9b26", color: "#fff"}}>
                       {"Play"}
                     </Button>
                     : State[game.state]}</TableCell>

@@ -3,7 +3,6 @@ import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import { withStyles } from 'material-ui/styles';
 import VideoGame from 'material-ui-icons/VideogameAsset';
-import swal from 'sweetalert';
 
 import Button from 'material-ui/Button';
 
@@ -60,12 +59,15 @@ class CreateGame extends Component {
 
   createGame = () => {
     let {gameName, amountBet, opponent} = this.state;
+    let {web3} = this.props;
+
+    let weiAmountBet = web3.toWei(amountBet, 'ether');
 
     if(opponent) {
-      this.props.contract.createGame(gameName, opponent, amountBet, {from: this.props.account});
+      this.props.contract.createGame(gameName, opponent, weiAmountBet , {from: this.props.account, value: weiAmountBet});
     }
     else {
-      this.props.contract.createWaitingGame(gameName, amountBet, {from: this.props.account});
+      this.props.contract.createWaitingGame(gameName, weiAmountBet , {from: this.props.account, value: weiAmountBet});
     }
 
     this.props.openLoading();
